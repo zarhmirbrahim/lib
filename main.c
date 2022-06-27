@@ -131,9 +131,7 @@ void LoadUsers()
 		if (!new_user)
 			exit(1);
 
-		// notre fichier binaire contient tous les information sauf User_t::NextUser
-		// donc copier sizeof(User_t) bytes et ignorer User_t::NextUser
-		fread(new_user, sizeof(User_t) - sizeof(new_user->NextUser), 1, file);
+		fread(new_user, sizeof(User_t), 1, file);
 
 		new_user->NextUser = g_Users;
 		g_Users = new_user;
@@ -152,9 +150,7 @@ void SaveUsers()
 
 	while (user)
 	{
-		// notre fichier binaire contient tous les information sauf User_t::NextUser
-		// donc ecrire sizeof(User_t) bytes et ignorer User_t::NextUser
-		fwrite(user, sizeof(User_t) - sizeof(user->NextUser), 1, file);
+		fwrite(user, sizeof(User_t), 1, file);
 		user = user->NextUser;
 	}
 
@@ -175,9 +171,10 @@ void SaveUsers()
 //	}
 
 ///////////////////////////////////////////////////////
-#define READ_OPT(str) 				\
-	system("cls");					\
-	puts("1- "#str);				\
+void READ_OPT(char* str) 				
+{			
+	printf("1- %s\n", str);				
+}
 	
 
 void newUserFromConsole()
@@ -203,22 +200,24 @@ void newUserFromConsole()
 	scanf("%d", &opt);
 	scanf("%c", &c);
 
-	user->LogType = opt - 1;
 	switch (opt)
 	{
 	case 1:
 		puts("Entrez 'CIN'");
 		scanf("%s", user->Login.CIN);
+		user->LogType = ID_CIN;
 		break;
 
 	case 2:
 		puts("Entrez 'CNE''");
 		scanf("%s", user->Login.CNE);
+		user->LogType = ID_CNE;
 		break;
 
 	default:
 		puts("Entrez 'APOGEE''");
 		scanf("%d", &user->Login.APOGEE);
+		user->LogType = ID_APOGEE;
 		break;
 	}
 
@@ -241,18 +240,9 @@ int newBooks(FILE* file)
 		if (!book)
 			exit(1);
 
-		int ret = fscanf(
-			file,
-			"%[^\n]\n%[^\n]\n%[^\n]\n",
-			book->ISBN,
-			book->Title,
-			book->Author);
-		if (ret != 3)
-		{
-			puts("Information de livre est invalid");
-			free(book);
-			return 0;
-		}
+		fscanf(file, "%s", book->ISBN);
+		fscanf(file, "%s", book->Title);
+		fscanf(file, "%s", book->Author);
 
 		book->NextBook = g_Books;
 		g_Books = book;
@@ -263,43 +253,11 @@ int newBooks(FILE* file)
 ///////////////////////////////////////////////////////
 User_t* User_Auth()
 {
-	Username_t un = { 0 };
-	char tmp[20];
+	char tmp1[20], tmp[20];
 	char c;
 
-	Indentifier_t id;
-
 	printf("Entrez 'CNE' ou 'CIN' ou 'APOGEE': ");
-
-	gets(tmp);
-	if (!stricmp(tmp, "CIN"))
-		id = ID_CIN;
-	else if (!stricmp(tmp, "CNE"))
-		id = ID_CNE;
-	else if (!stricmp(tmp, "APOGEE"))
-		id = ID_APOGEE;
-	else
-		return NULL;
-
-	printf("Entrez votre 'CNE' ou 'CIN' ou 'APOGEE': ");
-	switch (id)
-	{
-	case ID_CIN:
-	{
-		scanf("%s", un.CIN);
-		break;
-	}
-	case ID_CNE:
-	{
-		scanf("%s", un.CNE);
-		break;
-	}
-	case ID_APOGEE:
-	{
-		scanf("%d", &un.APOGEE);
-		break;
-	}
-	}
+	gets(tmp1);
 
 	scanf("%c", &c);
 
@@ -312,9 +270,25 @@ User_t* User_Auth()
 
 	while (user)
 	{
-		if (!memcmp(&user->Login, &un, sizeof(un)) &&
-			!strcmp(tmp, user->Password))
-			return user;
+		if (strcmp(user->Password, tmp) == 0)
+		{
+			switch (user->LogType)
+			{
+				case ID_APOGEE:
+				if (atoi(tmp1)==user->Login.Apogee)
+					return user;
+				break;
+
+				case ID_CIN:
+				if (strcmp(tmp1, user->Login.CIN)==0)
+					return user;
+				break;
+
+				case ID_CNE:
+				if (strcmp(tmp1, user->Login.CNE)==0)
+					return user;
+			}
+		}
 		user = user->NextUser;
 	}
 
